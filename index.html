@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>다수결 게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f1e7; --card:#fffdf8; --ink:#2b2a27; --muted:#7a7365; --line:#e6dfd0;
+    --a:#e2673b; --a-soft:#fde6dc; --b:#2f7fb8; --b-soft:#dcecf7; --ok:#2e9b5b; --gold:#f2b134;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Jua","Malgun Gothic","Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
+  #app{max-width:900px;margin:0 auto;padding:16px 16px 40px}
+  .host #app{max-width:1100px}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;color:var(--muted);font-size:15px}
+  .badge{white-space:nowrap;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  .badge.demo{background:#fff3cd;border-color:#f0d98a;color:#7a5b00}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 2px 0 rgba(0,0,0,.03)}
+  h1{font-size:34px;margin:0 0 6px} h2{font-size:26px;margin:0 0 12px}
+  .center{text-align:center}
+  .muted{color:var(--muted)}
+  input[type=text]{width:100%;font:inherit;font-size:22px;padding:14px 16px;border-radius:14px;border:2px solid var(--line);background:#fff;color:var(--ink)}
+  input[type=text]:focus{outline:none;border-color:var(--a)}
+  button{font:inherit;cursor:pointer}
+  .btn{background:var(--a);color:#fff;border:0;border-radius:14px;padding:14px 26px;font-size:22px}
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn.ghost{background:#fff;color:var(--ink);border:2px solid var(--line)}
+  .btn.big{font-size:28px;padding:18px 36px}
+  .err{color:#c0392b;min-height:24px;margin-top:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:18px}
+  .chip.off{opacity:.4}
+  .chip.me{border-color:var(--a);background:var(--a-soft)}
+  .qno{color:var(--muted);font-size:18px;margin-bottom:4px}
+  .qtext{font-size:clamp(24px,5vw,40px);line-height:1.3;margin:0 0 16px}
+  .timer{display:flex;align-items:center;gap:12px;margin:8px 0 18px}
+  .tbar{flex:1;height:16px;background:#ece5d5;border-radius:999px;overflow:hidden}
+  .tbar>i{display:block;height:100%;width:100%;background:var(--gold);transition:width .1s linear}
+  .tbar.low>i{background:#d9453a}
+  .tnum{font-size:34px;min-width:2ch;text-align:right}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:560px){.opts{grid-template-columns:1fr}}
+  .opt{border:3px solid transparent;border-radius:20px;padding:28px 12px;font-size:clamp(24px,5vw,38px);color:#fff;min-height:130px;line-height:1.25}
+  .opt.A{background:var(--a)} .opt.B{background:var(--b)}
+  .opt.sel{border-color:var(--ink);box-shadow:0 0 0 4px rgba(0,0,0,.12) inset}
+  .opt:disabled{cursor:default}
+  .opt:disabled:not(.sel){opacity:.55}
+  .picked{margin-top:12px;font-size:20px;min-height:28px}
+  .res{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:560px){.res{grid-template-columns:1fr}}
+  .col{border-radius:20px;padding:16px;border:3px solid transparent}
+  .col.A{background:var(--a-soft)} .col.B{background:var(--b-soft)}
+  .col.win{border-color:var(--gold);box-shadow:0 0 0 4px rgba(242,177,52,.25)}
+  .col h3{margin:0 0 6px;font-size:24px}
+  .cnt{font-size:44px;line-height:1}
+  .pbar{height:12px;border-radius:99px;background:rgba(0,0,0,.08);margin:8px 0 10px;overflow:hidden}
+  .pbar>i{display:block;height:100%}
+  .A .pbar>i{background:var(--a)} .B .pbar>i{background:var(--b)}
+  .who{display:flex;flex-wrap:wrap;gap:6px}
+  .who span{background:#fff;border-radius:999px;padding:3px 10px;font-size:16px}
+  .who span.me{outline:2px solid var(--ink)}
+  .verdict{margin:14px 0 4px;font-size:clamp(22px,4vw,30px);text-align:center}
+  .me-res{margin:10px 0;text-align:center;font-size:clamp(22px,4vw,30px)}
+  .me-res.good{color:var(--ok)}
+  table.rank{width:100%;border-collapse:collapse;font-size:20px}
+  table.rank td{padding:8px 10px;border-bottom:1px solid var(--line)}
+  table.rank td:first-child{width:3.2ch;text-align:center}
+  table.rank td:last-child{text-align:right;white-space:nowrap}
+  table.rank tr.me{background:var(--a-soft)}
+  .host-bar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .joinurl{font-family:Consolas,"Courier New",monospace;font-size:clamp(20px,4vw,40px);word-break:break-all;margin:10px 0;color:var(--a)}
+  .podium{font-size:clamp(28px,6vw,56px);margin:6px 0}
+  label.chk{font-size:17px;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .cols2{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+  @media (max-width:760px){.cols2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="questions.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+(function(){
+'use strict';
+const params = new URLSearchParams(location.search);
+const ROOM = (params.get('room') || 'yanghak').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30) || 'yanghak';
+const IS_HOST = params.has('host');
+const TIME = Math.max(2, parseInt(params.get('t'), 10) || 15);        // 문제당 제한 시간(초)
+const Q = window.QUESTIONS || [];
+const $app = document.getElementById('app');
+if (IS_HOST) document.body.classList.add('host');
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try { return sessionStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { sessionStorage.setItem(k, v); } catch(e){} }
+};
+
+/* ============ 연습 모드용 가짜 데이터베이스 (같은 브라우저의 탭끼리 연결) ============ */
+function makeLocalDB(){
+  const KEY = 'ig-demo-db';
+  let data = {}; try { data = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e){}
+  const subs = [];
+  const parts = p => p.split('/').filter(Boolean);
+  const get = p => {
+    if (p === '.info/serverTimeOffset') return 0;
+    if (p === '.info/connected') return true;
+    let o = data; for (const k of parts(p)){ if (o == null || typeof o !== 'object') return null; o = o[k]; }
+    return o === undefined ? null : o;
+  };
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){} };
+  const putRaw = (p, val) => {
+    const ks = parts(p);
+    if (!ks.length){ data = val || {}; return; }
+    let o = data;
+    for (let i = 0; i < ks.length - 1; i++){ if (o[ks[i]] == null || typeof o[ks[i]] !== 'object') o[ks[i]] = {}; o = o[ks[i]]; }
+    if (val === null || val === undefined) delete o[ks[ks.length - 1]]; else o[ks[ks.length - 1]] = JSON.parse(JSON.stringify(val));
+  };
+  const snap = p => { const v = get(p); return { val: () => v == null ? null : JSON.parse(JSON.stringify(v)), exists: () => v != null }; };
+  // 바뀐 경로와 관련 있는 구독만 알려 줘요 (.info 는 제외) — 안 그러면 서로를 계속 불러서 멈춰요
+  const fire = (changed) => {
+    const c = '/' + parts(changed || '').join('/');
+    subs.slice().forEach(s => {
+      if (s.path.startsWith('.info')) return;
+      const sp = '/' + parts(s.path).join('/');
+      if (!changed || sp === c || sp.startsWith(c + '/') || c.startsWith(sp + '/') || sp === '/') s.cb(snap(s.path));
+    });
+  };
+  window.addEventListener('storage', e => { if (e.key === KEY){ try { data = JSON.parse(e.newValue || '{}'); } catch(_){ data = {}; } fire(); } });
+  function ref(path){
+    return {
+      set(v){ putRaw(path, v); persist(); fire(path); return Promise.resolve(); },
+      update(o){ Object.entries(o).forEach(([k, v]) => putRaw(path + '/' + k, v)); persist(); fire(path); return Promise.resolve(); },
+      remove(){ return this.set(null); },
+      once(){ return Promise.resolve(snap(path)); },
+      on(ev, cb){ subs.push({ path, cb }); setTimeout(() => cb(snap(path)), 0); return cb; },
+      onDisconnect(){ return { set(){ return Promise.resolve(); } }; }
+    };
+  }
+  return { ref, local: true };
+}
+
+/* ============ Firebase 또는 연습 모드 연결 ============ */
+function loadScript(src){
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(s); });
+}
+async function connect(){
+  const cfg = window.FIREBASE_CONFIG || {};
+  if (cfg.apiKey && cfg.databaseURL){
+    const v = '10.12.2';
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-app-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-database-compat.js`);
+    firebase.initializeApp(cfg);
+    return { ref: p => firebase.database().ref(p), local: false };
+  }
+  return makeLocalDB();
+}
+
+/* ============ 게임 상태 ============ */
+let db, roomRef, offset = 0;
+let R = { state: { phase: 'lobby' }, players: {}, votes: {}, rounds: {} };
+let me = null;                    // { pid, name }  (참가자만)
+let myChoice = {};                // 낙관적 화면 표시용: { q번호: 'A'|'B' }
+let joinError = '';
+const now = () => Date.now() + offset;
+const qkey = n => 'q' + n;
+
+function scoreOf(pid){
+  let s = 0;
+  Object.values(R.rounds || {}).forEach(r => { const c = r.v && r.v[pid]; if (c && (r.w === 'T' || r.w === c)) s++; });
+  return s;
+}
+function ranking(){
+  const list = Object.entries(R.players || {}).map(([pid, p]) => ({ pid, name: p.name, online: p.online !== false, score: scoreOf(pid) }));
+  list.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'ko'));
+  list.forEach(x => { x.rank = 1 + list.filter(y => y.score > x.score).length; });
+  return list;
+}
+function onlinePlayers(){ return Object.entries(R.players || {}).filter(([, p]) => p.online !== false); }
+
+/* ---------- 참가자 동작 ---------- */
+async function join(name){
+  name = name.trim().replace(/\s+/g, ' ');
+  if (!name){ joinError = '닉네임을 입력해 주세요.'; return render(); }
+  if (name.length > 10){ joinError = '닉네임은 10글자까지예요.'; return render(); }
+  const players = (await db.ref(`rooms/${ROOM}/players`).once('value')).val() || {};
+  let pid = null;
+  for (const [id, p] of Object.entries(players)){
+    if (p.name === name){
+      if (p.online === false) pid = id;                 // 같은 이름이 오프라인이면 그 자리를 이어받아요
+      else { joinError = '이미 쓰고 있는 닉네임이에요. 다른 이름을 써 주세요.'; return render(); }
+    }
+  }
+  if (!pid) pid = 'p' + Math.random().toString(36).slice(2, 9);
+  me = { pid, name };
+  store.set(`ig:${ROOM}:me`, JSON.stringify(me));
+  joinError = '';
+  await announce();
+  render();
+}
+async function announce(){
+  if (!me) return;
+  const pr = db.ref(`rooms/${ROOM}/players/${me.pid}`);
+  const existing = (await pr.once('value')).val();
+  await pr.update({ name: me.name, online: true, joinedAt: existing && existing.joinedAt || Date.now() });
+}
+function watchConnection(){
+  db.ref('.info/connected').on('value', s => {
+    if (s.val() === true && me){
+      const o = db.ref(`rooms/${ROOM}/players/${me.pid}/online`);
+      o.onDisconnect().set(false);
+      o.set(true);
+    }
+  });
+  if (db.local) window.addEventListener('pagehide', () => { if (me) db.ref(`rooms/${ROOM}/players/${me.pid}/online`).set(false); });
+}
+function vote(c){
+  const st = R.state;
+  if (!me || st.phase !== 'question' || now() >= st.deadline) return;
+  myChoice[st.q] = c;
+  db.ref(`rooms/${ROOM}/votes/${qkey(st.q)}/${me.pid}`).set(c);
+  render();
+}
+
+/* ---------- 호스트 동작 ---------- */
+const hostOpt = { auto: true };
+function startQuestion(n){
+  db.ref(`rooms/${ROOM}/state`).set({ phase: 'question', q: n, limit: TIME, deadline: now() + TIME * 1000 });
+}
+function hostStart(){
+  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null });
+  setTimeout(() => startQuestion(0), 60);
+}
+let revealedFor = -1;
+async function reveal(){
+  const st = R.state;
+  if (st.phase !== 'question' || revealedFor === st.q) return;
+  revealedFor = st.q;
+  const votes = ((await db.ref(`rooms/${ROOM}/votes/${qkey(st.q)}`).once('value')).val()) || {};
+  const v = {}; let a = 0, b = 0;
+  Object.entries(votes).forEach(([pid, c]) => { if (R.players[pid] && (c === 'A' || c === 'B')){ v[pid] = c; c === 'A' ? a++ : b++; } });
+  const w = a > b ? 'A' : b > a ? 'B' : (a + b > 0 ? 'T' : '-');
+  await db.ref(`rooms/${ROOM}/rounds/${qkey(st.q)}`).set({ a, b, w, v });
+  await db.ref(`rooms/${ROOM}/state`).update({ phase: 'reveal' });
+}
+function hostNext(){
+  const n = R.state.q + 1;
+  if (n < Q.length) startQuestion(n);
+  else db.ref(`rooms/${ROOM}/state`).set({ phase: 'final', q: R.state.q });
+}
+function hostRestart(){
+  revealedFor = -1;
+  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null });
+  db.ref(`rooms/${ROOM}/state`).set({ phase: 'lobby' });
+}
+function hostTick(){
+  const st = R.state;
+  if (st.phase !== 'question') return;
+  const votes = (R.votes || {})[qkey(st.q)] || {};
+  const online = onlinePlayers();
+  const voted = online.filter(([pid]) => votes[pid]).length;
+  if (now() >= st.deadline + 700) reveal();
+  else if (hostOpt.auto && online.length && voted >= online.length) reveal();
+}
+
+/* ============ 화면 ============ */
+function header(){
+  const demo = db.local ? '<span class="badge demo">연습 모드 · 같은 브라우저 탭끼리만 연결돼요</span>' : '<span></span>';
+  const who = IS_HOST ? '<span class="badge">👑 호스트</span>' : (me ? `<span class="badge">🙋 ${esc(me.name)}</span>` : '<span></span>');
+  return `<div class="top">${demo}${who}</div>`;
+}
+function chips(list, meId){
+  return `<div class="chips">${list.map(p => `<span class="chip${p.online ? '' : ' off'}${p.pid === meId ? ' me' : ''}">${esc(p.name)}</span>`).join('')}</div>`;
+}
+function rankTable(list, limit){
+  const rows = (limit ? list.slice(0, limit) : list).map(p =>
+    `<tr class="${me && p.pid === me.pid ? 'me' : ''}"><td>${p.rank}</td><td>${esc(p.name)}</td><td>${p.score}점</td></tr>`).join('');
+  return `<table class="rank">${rows}</table>`;
+}
+function joinUrl(){ return (location.origin + location.pathname).replace(/index\.html$/, '').replace(/^https?:\/\//, '') + (ROOM !== 'yanghak' ? '?room=' + ROOM : ''); }
+
+function viewJoin(){
+  return `${header()}<div class="card center">
+    <h1>🗳️ 다수결 게임</h1>
+    <p class="muted">더 많은 사람이 고른 쪽을 맞히면 1점!</p>
+    <div style="max-width:420px;margin:18px auto 0">
+      <input type="text" id="nick" maxlength="10" placeholder="닉네임을 입력하세요" autocomplete="off" autofocus>
+      <div class="err">${esc(joinError)}</div>
+      <button class="btn big" id="joinBtn">입장하기</button>
+    </div></div>`;
+}
+function viewLobby(){
+  const list = ranking();
+  if (IS_HOST){
+    return `${header()}<div class="card center">
+      <h1>🗳️ 다수결 게임</h1>
+      <div class="muted">참가 주소 (주소창에 그대로 입력하세요)</div>
+      <div class="joinurl">${esc(joinUrl())}</div>
+      <h2>참가자 ${list.length}명</h2>
+      ${list.length ? chips(list) : '<p class="muted">아직 아무도 없어요. 기다리는 중…</p>'}
+      <div class="host-bar"><button class="btn big" id="startBtn" ${list.length ? '' : 'disabled'}>🚀 게임 시작 (${Q.length}문제)</button></div>
+      <div class="host-bar"><label class="chk"><input type="checkbox" id="autoChk" ${hostOpt.auto ? 'checked' : ''}> 모두 선택하면 시간이 남아도 바로 공개</label></div>
+    </div>`;
+  }
+  return `${header()}<div class="card center">
+    <h2>입장했어요! 🎉</h2>
+    <p class="muted">호스트가 시작하길 기다리는 중…</p>
+    <h2 style="margin-top:20px">참가자 ${list.length}명</h2>${chips(list, me.pid)}
+  </div>`;
+}
+function viewQuestion(){
+  const st = R.state, q = Q[st.q] || { q: '', a: '', b: '' };
+  const votes = (R.votes || {})[qkey(st.q)] || {};
+  const online = onlinePlayers(), voted = online.filter(([pid]) => votes[pid]).length;
+  const mine = me ? (votes[me.pid] || myChoice[st.q]) : null;
+  const expired = now() >= st.deadline;
+  const btn = (k, text) => `<button class="opt ${k}${mine === k ? ' sel' : ''}" data-v="${k}" ${(IS_HOST || expired) ? 'disabled' : ''}>${esc(text)}${mine === k ? ' ✔' : ''}</button>`;
+  return `${header()}<div class="card">
+    <div class="qno">${st.q + 1} / ${Q.length} 문제</div>
+    <div class="qtext">${esc(q.q)}</div>
+    <div class="timer"><div class="tbar" id="tbar"><i></i></div><div class="tnum" id="tnum">${st.limit || TIME}</div></div>
+    <div class="opts">${btn('A', q.a)}${btn('B', q.b)}</div>
+    ${IS_HOST
+      ? `<div class="picked center">✋ 선택한 사람 <b>${voted}</b> / ${online.length}</div>
+         <div class="host-bar"><button class="btn ghost" id="revealBtn">지금 마감하고 공개</button></div>`
+      : `<div class="picked center">${mine ? '선택했어요! 시간 안에는 바꿀 수 있어요.' : '하나를 골라 주세요. 다수가 고른 쪽이 정답!'}</div>`}
+  </div>`;
+}
+function viewReveal(){
+  const st = R.state, q = Q[st.q], r = (R.rounds || {})[qkey(st.q)] || { a: 0, b: 0, w: '-', v: {} };
+  const total = r.a + r.b, names = c => Object.entries(r.v || {}).filter(([, x]) => x === c).map(([pid]) => ({ pid, name: (R.players[pid] || {}).name || '?' }));
+  const col = (k, text, n) => `<div class="col ${k}${r.w === k || r.w === 'T' ? ' win' : ''}">
+      <h3>${esc(text)}</h3>
+      <div class="cnt">${n}<span style="font-size:20px">명</span> ${r.w === k ? '🏆' : (r.w === 'T' ? '🤝' : '')}</div>
+      <div class="pbar"><i style="width:${total ? Math.round(n / total * 100) : 0}%"></i></div>
+      <div class="who">${names(k).map(p => `<span class="${me && p.pid === me.pid ? 'me' : ''}">${esc(p.name)}</span>`).join('') || '<span class="muted">아무도 없어요</span>'}</div></div>`;
+  const verdict = r.w === 'T' ? '🤝 동점! 고른 사람은 모두 1점' : r.w === '-' ? '아무도 고르지 않았어요' : `🏆 ${r.w === 'A' ? esc(q.a) : esc(q.b)} 이(가) 다수!`;
+  let mineMsg = '';
+  if (me){
+    const c = (r.v || {})[me.pid];
+    if (!c) mineMsg = '<div class="me-res">⏰ 선택하지 못했어요 · 0점</div>';
+    else if (r.w === 'T' || r.w === c) mineMsg = '<div class="me-res good">🎉 다수파! +1점</div>';
+    else mineMsg = '<div class="me-res">😅 소수파예요 · 0점</div>';
+  }
+  const last = st.q + 1 >= Q.length;
+  return `${header()}<div class="card">
+    <div class="qno">${st.q + 1} / ${Q.length} 문제 결과</div>
+    <div class="qtext">${esc(q.q)}</div>
+    <div class="res">${col('A', q.a, r.a)}${col('B', q.b, r.b)}</div>
+    <div class="verdict">${verdict}</div>
+    ${mineMsg}
+    ${IS_HOST
+      ? `<div class="host-bar"><button class="btn big" id="nextBtn">${last ? '🏁 최종 결과 보기' : '다음 문제 ▶'}</button></div>`
+      : `<p class="center muted">호스트가 ${last ? '최종 결과를' : '다음 문제를'} 준비하고 있어요…</p>`}
+    <div style="max-width:520px;margin:18px auto 0"><h2 style="font-size:20px;margin:0 0 6px">🏅 지금 순위</h2>${rankTable(ranking(), 5)}</div>
+  </div>`;
+}
+function viewFinal(){
+  const list = ranking(), top = list.filter(p => p.rank === 1);
+  return `${header()}<div class="card center">
+    <h1>🏁 최종 결과</h1>
+    <div class="podium">🏆 ${top.map(p => esc(p.name)).join(', ') || '-'}</div>
+    <div class="muted">${top[0] ? `${top[0].score}점 / ${Q.length}점` : ''}</div>
+    <div style="max-width:520px;margin:18px auto 0;text-align:left">${rankTable(list)}</div>
+    ${IS_HOST ? '<div class="host-bar"><button class="btn big" id="againBtn">🔄 다시 하기</button></div>' : '<p class="muted">함께해 주셔서 고마워요! 🎈</p>'}
+  </div>`;
+}
+
+function render(){
+  if (!db) return;
+  const ph = (R.state || {}).phase || 'lobby';
+  if (!IS_HOST && !me){ $app.innerHTML = viewJoin(); bindJoin(); return; }
+  $app.innerHTML = ph === 'question' ? viewQuestion() : ph === 'reveal' ? viewReveal() : ph === 'final' ? viewFinal() : viewLobby();
+  bind(ph);
+  tick();
+}
+function bindJoin(){
+  const inp = document.getElementById('nick'), go = () => join(inp.value);
+  document.getElementById('joinBtn').onclick = go;
+  inp.onkeydown = e => { if (e.key === 'Enter') go(); };
+  inp.focus();
+}
+function bind(ph){
+  const $ = id => document.getElementById(id);
+  if (ph === 'lobby' && IS_HOST){
+    $('startBtn').onclick = hostStart;
+    $('autoChk').onchange = e => { hostOpt.auto = e.target.checked; };
+  }
+  if (ph === 'question'){
+    document.querySelectorAll('.opt').forEach(b => b.onclick = () => vote(b.dataset.v));
+    if (IS_HOST) $('revealBtn').onclick = reveal;
+  }
+  if (ph === 'reveal' && IS_HOST) $('nextBtn').onclick = hostNext;
+  if (ph === 'final' && IS_HOST) $('againBtn').onclick = hostRestart;
+}
+function tick(){
+  const st = R.state;
+  if (st.phase !== 'question') return;
+  const remain = Math.max(0, st.deadline - now()), lim = (st.limit || TIME) * 1000;
+  const bar = document.getElementById('tbar'), num = document.getElementById('tnum');
+  if (!bar) return;
+  bar.firstElementChild.style.width = (remain / lim * 100) + '%';
+  bar.classList.toggle('low', remain <= 5000);
+  num.textContent = Math.ceil(remain / 1000);
+  if (remain <= 0) document.querySelectorAll('.opt').forEach(b => b.disabled = true);
+}
+
+/* ============ 시작 ============ */
+(async function main(){
+  $app.innerHTML = '<div class="card center"><p class="muted">연결하는 중…</p></div>';
+  try { db = await connect(); }
+  catch(e){ $app.innerHTML = '<div class="card center"><h2>연결하지 못했어요</h2><p class="muted">인터넷 연결을 확인하고 새로고침해 주세요.</p></div>'; return; }
+  db.ref('.info/serverTimeOffset').on('value', s => { offset = s.val() || 0; });
+  try { const saved = JSON.parse(store.get(`ig:${ROOM}:me`) || 'null'); if (saved && saved.pid && !IS_HOST) me = saved; } catch(e){}
+  roomRef = db.ref('rooms/' + ROOM);
+  roomRef.on('value', s => {
+    const v = s.val() || {};
+    R = { state: v.state || { phase: 'lobby' }, players: v.players || {}, votes: v.votes || {}, rounds: v.rounds || {} };
+    if (R.state.phase === 'lobby') myChoice = {};
+    if (me && !IS_HOST && !R.players[me.pid]) announce();          // 호스트가 방을 비웠다가 다시 열어도 이어서 참가
+    render();
+  });
+  if (me && !IS_HOST) announce();
+  watchConnection();
+  setInterval(tick, 100);
+  if (IS_HOST) setInterval(hostTick, 300);
+})();
+})();
+</script>
+</body>
+</html>
