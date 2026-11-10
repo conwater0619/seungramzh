@@ -15,7 +15,16 @@
   html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
     font-family:"Jua","Malgun Gothic","Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
   #app{max-width:900px;margin:0 auto;padding:16px 16px 40px}
-  .host #app{max-width:1100px}
+  .host #app{max-width:1400px}
+  .hw{display:flex;gap:16px;align-items:flex-start}
+  .hm{flex:1;min-width:0}
+  .side{width:230px;flex:none;margin-top:52px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center;cursor:pointer;position:sticky;top:12px}
+  .side .st{font-size:16px;font-weight:700;color:#2b3a4f;margin-bottom:8px}
+  .side .sq{width:200px;height:200px;margin:0 auto;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+  .side .sq svg{display:block;width:100%;height:100%}
+  .side .sa{margin-top:8px;font-family:Consolas,"Courier New",monospace;font-weight:700;font-size:15px;word-break:break-all;color:#1b1b1b}
+  .side .sn{margin-top:6px;font-size:15px;color:#5b6b80}
+  @media (max-width:900px){.hw{flex-direction:column}.side{width:auto;margin-top:0;position:static}}
   .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;color:var(--muted);font-size:15px}
   .badge{white-space:nowrap;background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px}
   .badge.demo{background:#fff3cd;border-color:#f0d98a;color:#7a5b00}
@@ -33,6 +42,11 @@
   .err{color:#c0392b;min-height:24px;margin-top:8px}
   .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
   .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:18px}
+  .draw{margin:18px auto 0;max-width:520px;background:#fff8e1;border:2px solid #f6b73c;border-radius:18px;padding:14px}
+  .draw .dlabel{font-size:18px;color:#8a6a1c}
+  .draw .dname{font-size:clamp(34px,8vw,64px);font-weight:800;line-height:1.2;min-height:1.2em;word-break:break-all}
+  .draw .dname.win{color:#c0392b;animation:pop .5s}
+  @keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
   .chip.off{opacity:.4}
   button.chip{cursor:pointer;font:inherit;font-size:18px;color:inherit}
   button.chip.kick:hover{border-color:#d33;background:#fff0f0}
@@ -91,10 +105,15 @@
   @keyframes fadein{from{opacity:0}to{opacity:1}}
   .join-ov .jt{font-size:clamp(24px,5vh,56px);color:#2b3a4f;text-align:center}
   .join-ov .jrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4vw}
-  .join-ov .jqr{width:min(56vh,86vw,640px);height:min(56vh,86vw,640px);border:3px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+  .join-ov .jqr{width:min(40vh,86vw,520px);height:min(40vh,86vw,520px);border:3px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
   .join-ov .jqr svg{display:block;width:100%;height:100%}
   .join-ov .ja{font-family:Consolas,"Courier New",ui-monospace,monospace;font-weight:700;color:#1b1b1b;white-space:nowrap;text-align:center}
   .join-ov .jh{font-size:clamp(16px,3vh,28px);color:#5b6b80;text-align:center}
+  .join-ov .jp{width:100%;max-width:1400px;text-align:center}
+  .join-ov .jpn{font-size:clamp(18px,3vh,30px);color:#2b3a4f;margin-bottom:4px}
+  .join-ov .jpl{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 10px;max-height:22vh;overflow:auto}
+  .join-ov .jpl span{background:#eef3fb;border-radius:999px;padding:3px 14px;font-size:clamp(16px,2.8vh,28px)}
+  .join-ov .jpl span.off{opacity:.4}
   .join-ov .jx{position:absolute;top:14px;right:18px;font-size:16px;color:#9aa4b2}
   .btn.qrbtn{font-size:20px;padding:10px 20px}
   .cols2{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
@@ -213,7 +232,7 @@ function sFinal(){ [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => b
 
 /* ============ 게임 상태 ============ */
 let db, roomRef, offset = 0;
-let R = { state: { phase: 'lobby' }, players: {}, votes: {}, rounds: {}, kicked: {} };
+let R = { state: { phase: 'lobby' }, players: {}, votes: {}, rounds: {}, kicked: {}, draw: null };
 let me = null;                    // { pid, name }  (참가자만)
 let myChoice = {};                // 낙관적 화면 표시용: { q번호: 'A'|'B' }
 let joinError = '';
@@ -318,7 +337,7 @@ function startQuestion(n){
   db.ref(`rooms/${ROOM}/state`).set({ phase: 'question', q: n, limit: TIME, deadline: now() + TIME * 1000 });
 }
 function hostStart(){
-  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null });
+  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null, draw: null });
   setTimeout(() => startQuestion(0), 60);
 }
 let revealedFor = -1, prevPhase = null;
@@ -351,8 +370,33 @@ function hostEnd(){
 function endLabel(txt){ return Date.now() < endArmedUntil ? '⚠️ 정말 끝낼까요? 한 번 더 누르세요' : txt; }
 function hostRestart(){
   revealedFor = -1;
-  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null });
+  db.ref(`rooms/${ROOM}`).update({ votes: null, rounds: null, draw: null });
   db.ref(`rooms/${ROOM}/state`).set({ phase: 'lobby' });
+}
+function topCandidates(){
+  const list = ranking(), top = list.filter(p => p.rank === 1), done = (R.draw && R.draw.pids) || [];
+  return { top, left: top.filter(p => !done.includes(p.pid)) };
+}
+function hostDraw(){
+  const { top, left } = topCandidates();
+  if (top.length < 2 || !left.length) return;
+  const rnd = n => { try { return crypto.getRandomValues(new Uint32Array(1))[0] % n; } catch(e){ return Math.floor(Math.random() * n); } };
+  const win = left[rnd(left.length)], prev = R.draw || { pids: [], names: [] };
+  const c = left.map(p => p.name).sort(() => rnd(2) - .5);
+  db.ref(`rooms/${ROOM}/draw`).set({ t: now(), c, pids: [...(prev.pids || []), win.pid], names: [...(prev.names || []), win.name] });
+}
+let drawKey = null, drawIdx = -1, drawDone = null;
+function drawTick(){
+  const dr = R.draw; if (!dr) return;
+  const el = now() - dr.t;
+  if (drawKey !== dr.t){ drawKey = dr.t; drawIdx = -1; }
+  if (el < 3500){
+    const n = document.getElementById('drawName'); if (!n) return;
+    const idx = Math.floor(Math.pow(Math.max(0, el) / 3500, .6) * 28);
+    if (idx !== drawIdx){ drawIdx = idx; n.textContent = dr.c[idx % dr.c.length]; if (IS_HOST) sTick(idx, false); }
+  } else if (drawDone !== dr.t){
+    drawDone = dr.t; render(); if (IS_HOST && el < 5500) sFinal();
+  }
 }
 function hostTick(){
   const st = R.state;
@@ -386,11 +430,18 @@ function showJoinPopup(){
     <div class="jt">🗳️ 다수결 게임 · QR코드를 찍거나 주소를 입력하세요</div>
     <div class="jrow"><div class="jqr">${qrSvg(url)}</div></div>
     <div class="ja" style="font-size:${fs}px">${esc(shown)}</div>
-    <div class="jh">https:// 는 안 쳐도 돼요</div>`;
+    <div class="jh">https:// 는 안 쳐도 돼요</div>
+    <div class="jp"></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', k, true); };
   const k = e => { if (e.key === 'Escape'){ e.preventDefault(); close(); } };
   ov.onclick = close; document.addEventListener('keydown', k, true);
   document.body.appendChild(ov);
+  refreshJoinPopup();
+}
+function refreshJoinPopup(){
+  const jp = document.querySelector('.join-ov .jp'); if (!jp) return;
+  const list = ranking();
+  jp.innerHTML = `<div class="jpn">👥 접속한 사람 <b>${list.length}</b>명</div><div class="jpl">${list.map(p => `<span class="${p.online ? '' : 'off'}">${esc(p.name)}</span>`).join('') || '<span class="off">아직 아무도 없어요</span>'}</div>`;
 }
 
 /* ============ 화면 ============ */
@@ -409,6 +460,12 @@ function rankTable(list, limit){
   const rows = (limit ? list.slice(0, limit) : list).map(p =>
     `<tr class="${me && p.pid === me.pid ? 'me' : ''}"><td>${p.rank}</td><td>${esc(p.name)}</td><td>${p.score}점</td></tr>`).join('');
   return `<table class="rank">${rows}</table>`;
+}
+let sideQr = '';
+function sidePanel(){
+  const url = joinFullUrl(), shown = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  if (!sideQr) sideQr = qrSvg(url);
+  return `<aside class="side" id="sideJoin" title="누르면 큰 화면"><div class="st">🙋 중간에 들어오려면</div><div class="sq">${sideQr}</div><div class="sa">${esc(shown)}</div><div class="sn">접속 ${onlinePlayers().length}명</div></aside>`;
 }
 function joinUrl(){ return (location.origin + location.pathname).replace(/index\.html$/, '').replace(/^https?:\/\//, '') + (ROOM !== 'yanghak' ? '?room=' + ROOM : ''); }
 
@@ -452,7 +509,7 @@ function viewQuestion(){
   const btn = (k, text) => `<button class="opt ${k}${mine === k ? ' sel' : ''}" data-v="${k}" ${(IS_HOST || expired) ? 'disabled' : ''}>${esc(text)}${mine === k ? ' ✔' : ''}</button>`;
   return `${header()}<div class="card">
     <div class="qno">${st.q + 1} / ${Q.length} 문제</div>
-    <div class="qtext">${esc(q.q)}</div>
+    ${q.q ? `<div class="qtext">${esc(q.q)}</div>` : ''}
     <div class="timer"><div class="tbar" id="tbar"><i></i></div><div class="tnum" id="tnum">${st.limit || TIME}</div></div>
     <div class="opts">${btn('A', q.a)}${btn('B', q.b)}</div>
     ${IS_HOST
@@ -480,7 +537,7 @@ function viewReveal(){
   const last = st.q + 1 >= Q.length;
   return `${header()}<div class="card">
     <div class="qno">${st.q + 1} / ${Q.length} 문제 결과</div>
-    <div class="qtext">${esc(q.q)}</div>
+    ${q.q ? `<div class="qtext">${esc(q.q)}</div>` : ''}
     <div class="res">${col('A', q.a, r.a)}${col('B', q.b, r.b)}</div>
     <div class="verdict">${verdict}</div>
     ${mineMsg}
@@ -492,12 +549,18 @@ function viewReveal(){
 }
 function viewFinal(){
   const list = ranking(), top = list.filter(p => p.rank === 1), played = Object.keys(R.rounds || {}).length;
+  const dr = R.draw, drawing = !!(dr && now() - dr.t < 3500), tc = topCandidates();
+  const drawBox = dr ? (drawing
+    ? `<div class="draw"><div class="dlabel">🎲 추첨 중…</div><div class="dname" id="drawName">?</div></div>`
+    : `<div class="draw"><div class="dlabel">🎉 추첨 결과</div><div class="dname win">${esc(dr.names[dr.names.length - 1])}</div>${dr.names.length > 1 ? `<div class="muted">뽑힌 순서: ${dr.names.map(esc).join(' → ')}</div>` : ''}</div>`) : '';
+  const drawBtn = IS_HOST && top.length > 1 && tc.left.length && !drawing ? `<button class="btn" id="drawBtn">${dr ? '🎲 한 명 더 뽑기' : `🎲 공동 1등 ${top.length}명 중 추첨`}</button>` : '';
   return `${header()}<div class="card center">
     <h1>🏁 최종 결과</h1>
     <div class="podium">🏆 ${top.map(p => esc(p.name)).join(', ') || '-'}</div>
     <div class="muted">${top[0] ? `${top[0].score}점 / ${played}문제` : ''}${played < Q.length ? ` · 중간에 끝냈어요 (${played}/${Q.length}문제 진행)` : ''}</div>
+    ${drawBox}
     <div style="max-width:520px;margin:18px auto 0;text-align:left">${rankTable(list)}</div>
-    ${IS_HOST ? '<div class="host-bar"><button class="btn big" id="againBtn">🔄 다시 하기</button></div>' : '<p class="muted">함께해 주셔서 고마워요! 🎈</p>'}
+    ${IS_HOST ? `<div class="host-bar">${drawBtn}<button class="btn big" id="againBtn">🔄 다시 하기</button></div>` : '<p class="muted">함께해 주셔서 고마워요! 🎈</p>'}
   </div>`;
 }
 
@@ -513,7 +576,9 @@ function render(){
     };
     return;
   }
-  $app.innerHTML = ph === 'question' ? viewQuestion() : ph === 'reveal' ? viewReveal() : ph === 'final' ? viewFinal() : viewLobby();
+  const view = ph === 'question' ? viewQuestion() : ph === 'reveal' ? viewReveal() : ph === 'final' ? viewFinal() : viewLobby();
+  $app.innerHTML = IS_HOST && (ph === 'question' || ph === 'reveal') ? `<div class="hw"><div class="hm">${view}</div>${sidePanel()}</div>` : view;
+  const sd = document.getElementById('sideJoin'); if (sd) sd.onclick = showJoinPopup;
   bind(ph);
   tick();
 }
@@ -536,11 +601,12 @@ function bind(ph){
     if (IS_HOST){ $('revealBtn').onclick = reveal; $('endBtn').onclick = hostEndClick; }
   }
   if (ph === 'reveal' && IS_HOST){ $('nextBtn').onclick = hostNext; if ($('endBtn')) $('endBtn').onclick = hostEndClick; }
-  if (ph === 'final' && IS_HOST) $('againBtn').onclick = hostRestart;
+  if (ph === 'final' && IS_HOST){ $('againBtn').onclick = hostRestart; if ($('drawBtn')) $('drawBtn').onclick = hostDraw; }
 }
 let sndKey = '', sndSec = -1, sndDone = false;
 function tick(){
   const st = R.state;
+  if (st.phase === 'final') return drawTick();
   if (st.phase !== 'question') return;
   const remain = Math.max(0, st.deadline - now()), lim = (st.limit || TIME) * 1000;
   const bar = document.getElementById('tbar'), num = document.getElementById('tnum');
@@ -569,7 +635,7 @@ function tick(){
   roomRef.on('value', s => {
     const v = s.val() || {};
     const pl = {}; Object.entries(v.players || {}).forEach(([k, p]) => { if (p && p.name) pl[k] = p; });     // 내보낸 뒤 남는 이름 없는 찌꺼기는 무시
-    R = { state: v.state || { phase: 'lobby' }, players: pl, votes: v.votes || {}, rounds: v.rounds || {}, kicked: v.kicked || {} };
+    R = { state: v.state || { phase: 'lobby' }, players: pl, votes: v.votes || {}, rounds: v.rounds || {}, kicked: v.kicked || {}, draw: v.draw || null };
     if (R.state.phase === 'lobby') myChoice = {};
     if (IS_HOST && prevPhase !== null && prevPhase !== R.state.phase){
       if (R.state.phase === 'reveal' && prevPhase === 'question' && !sndDone) sReveal();     // 시간이 남았는데 공개됐을 때(모두 선택·직접 마감)
@@ -577,7 +643,7 @@ function tick(){
     }
     prevPhase = R.state.phase;
     if (me && !IS_HOST && !R.players[me.pid] && !isKicked()) announce();          // 호스트가 방을 비웠다가 다시 열어도 이어서 참가
-    render(); refreshPlayers();
+    render(); refreshPlayers(); refreshJoinPopup();
   });
   if (me && !IS_HOST) announce();
   watchConnection();
