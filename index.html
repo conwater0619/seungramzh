@@ -47,6 +47,7 @@
   .draw .dname{font-size:clamp(34px,8vw,64px);font-weight:800;line-height:1.2;min-height:1.2em;word-break:break-all}
   .draw .dname.win{color:#c0392b;animation:pop .5s}
   @keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .lobbyimg{display:block;width:100%;max-width:760px;margin:16px auto 0;border-radius:16px;box-shadow:0 4px 16px rgba(0,0,0,.18)}
   .chip.off{opacity:.4}
   button.chip{cursor:pointer;font:inherit;font-size:18px;color:inherit}
   button.chip.kick:hover{border-color:#d33;background:#fff0f0}
@@ -492,13 +493,13 @@ function viewLobby(){
       <div class="host-bar"><button class="btn big" id="startBtn" ${list.length ? '' : 'disabled'}>🚀 게임 시작 (${Q.length}문제)</button></div>
       <div class="host-bar muted" style="font-size:16px">🔊 효과음은 호스트 화면에서만 나와요. 컴퓨터 소리를 켜 두세요.</div>
       <div class="host-bar"><label class="chk"><input type="checkbox" id="autoChk" ${hostOpt.auto ? 'checked' : ''}> 모두 선택하면 시간이 남아도 바로 공개</label></div>
-    </div>`;
+    </div><img class="lobbyimg" src="lobby.jpg" alt="" decoding="async" onerror="this.remove()">`;
   }
   return `${header()}<div class="card center">
     <h2>입장했어요! 🎉</h2>
     <p class="muted">호스트가 시작하길 기다리는 중…</p>
     <h2 style="margin-top:20px">참가자 ${list.length}명</h2>${chips(list, me.pid)}
-  </div>`;
+  </div><img class="lobbyimg" src="lobby.jpg" alt="" decoding="async" onerror="this.remove()">`;
 }
 function viewQuestion(){
   const st = R.state, q = Q[st.q] || { q: '', a: '', b: '' };
